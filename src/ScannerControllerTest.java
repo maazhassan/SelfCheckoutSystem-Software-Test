@@ -1,7 +1,11 @@
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.lsmr.selfcheckout.Barcode;
 import org.lsmr.selfcheckout.BarcodedItem;
 import org.lsmr.selfcheckout.devices.SelfCheckoutStation;
+import org.lsmr.selfcheckout.external.ProductDatabases;
+import org.lsmr.selfcheckout.products.BarcodedProduct;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -18,6 +22,24 @@ public class ScannerControllerTest {
     private final BigDecimal[] coinDenominations = {new BigDecimal("0.05"), new BigDecimal("0.10"),
             new BigDecimal("0.25"), new BigDecimal("1.00"), new BigDecimal("2.00")};
 
+
+    @Before
+    public void addToDatabase() {
+        Barcode barcode1 = new Barcode("123456789");
+        Barcode barcode2 = new Barcode("987654321");
+        Barcode barcode3 = new Barcode("222222222");
+        BarcodedProduct product1 = new BarcodedProduct(barcode1, "A generic product1.", new BigDecimal("100.10"));
+        BarcodedProduct product2 = new BarcodedProduct(barcode2, "A generic product2.", new BigDecimal("200.20"));
+        BarcodedProduct product3 = new BarcodedProduct(barcode3, "A generic product3.", new BigDecimal("300.30"));
+        ProductDatabases.BARCODED_PRODUCT_DATABASE.put(barcode1, product1);
+        ProductDatabases.BARCODED_PRODUCT_DATABASE.put(barcode2, product2);
+        ProductDatabases.BARCODED_PRODUCT_DATABASE.put(barcode3, product3);
+    }
+
+    @After
+    public void clearDatabase() {
+        ProductDatabases.BARCODED_PRODUCT_DATABASE.clear();
+    }
 
     @Test
     public void testEnabled() {
@@ -117,7 +139,7 @@ public class ScannerControllerTest {
             ScannerController controller = new ScannerController(cs);
             SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
             station.mainScanner.register(controller);
-            Barcode barcode = new Barcode("12345678");
+            Barcode barcode = new Barcode("123456789");
             BarcodedItem item = new BarcodedItem(barcode, 1.0);
             station.mainScanner.scan(item);
             station.mainScanner.scan(item);
@@ -158,5 +180,19 @@ public class ScannerControllerTest {
                 if (failCounter > 10) throw new AssertionError();
             }
         }
+    }
+
+    @Test
+    public void testPriceUpdated() {
+        ControlSoftware cs = new ControlSoftware();
+        ScannerController controller = new ScannerController(cs);
+        SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+        station.mainScanner.register(controller);
+        Barcode barcode = new Barcode("123456789");
+        BarcodedItem item = new BarcodedItem(barcode, 1.0);
+        while (cs.getPurchaseList().size() == 0) {
+            station.mainScanner.scan(item);
+        }
+        assertEquals(cs.getTotal(), new BigDecimal("100.10"));
     }
 }
