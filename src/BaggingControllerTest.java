@@ -1,9 +1,10 @@
-package org.lsmr.selfcheckout.controlsoftware;
-
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.math.BigDecimal;
+import java.util.Currency;
+
 import org.junit.Test;
 
 import org.lsmr.selfcheckout.Item;
@@ -14,23 +15,23 @@ public class BaggingControllerTest {
 	private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
 	private final PrintStream originalOut = System.out;
 	public static final int testlimit = 30000;
-	public static final int testsens = 50;
-	
-	SelfCheckoutStation a = new SelfCheckoutStation(null, null, null, testsens, testlimit);
-	@Test
-	public void constr() {
-		BaggingControlSoftware bc = new BaggingControlSoftware(a);
-		}
-		
+	public static final int testsens = 5;
+	private final Currency currency = Currency.getInstance("CAD");
+	private final int[] banknoteDenominations = {5, 10, 20, 50, 100};
+	private final BigDecimal[] coinDenominations = {new BigDecimal("0.05"), new BigDecimal("0.10"),
+			new BigDecimal("0.25"), new BigDecimal("1.00"), new BigDecimal("2.00")};
+
 	
 	@Test
-	public void testenabled() {
+	public void testEnabled() {
 		System.setOut(new PrintStream(outContent));
+		ControlSoftware cs = new ControlSoftware();
+		SelfCheckoutStation a = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, testlimit, testsens);
+		BaggingController bc = new BaggingController(cs);
+		a.baggingArea.register(bc);
 		try {
-		a.scale.enable();
-		assertEquals("A scale has been enabled.\n", outContent.toString());
-		a.baggingArea.enable();
-		assertEquals("A baggingArea has been enabled.\n", outContent.toString());
+			a.baggingArea.enable();
+			assertEquals("A ElectronicScale has been enabled.\n", outContent.toString());
 		}
 		finally {
 			System.setOut(originalOut);
@@ -40,11 +41,13 @@ public class BaggingControllerTest {
 	@Test
 	public void testDisabled() {
 		System.setOut(new PrintStream(outContent));
+		ControlSoftware cs = new ControlSoftware();
+		SelfCheckoutStation a = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, testlimit, testsens);
+		BaggingController bc = new BaggingController(cs);
+		a.baggingArea.register(bc);
 		try {
-		a.scale.disable();
-		assertEquals("A scale has been disabled.\n", outContent.toString());
-		a.baggingArea.disable();
-		assertEquals("A baggingArea has been disabled.\n", outContent.toString());
+			a.baggingArea.disable();
+			assertEquals("A ElectronicScale has been disabled.\n", outContent.toString());
 		}
 		finally {
 			System.setOut(originalOut);
@@ -52,68 +55,45 @@ public class BaggingControllerTest {
 	}
 	
 	@Test
-	public void testadditem() throws Exception {
-		SelfCheckoutStation a = new SelfCheckoutStation(null, null, null, testsens, testlimit);
-		BaggingControlSoftware bControlSoftware = BaggingControlSoftware(a);
+	public void testAddItem()  {
+		ControlSoftware cs = new ControlSoftware();
+		SelfCheckoutStation a = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, testlimit, testsens);
+		BaggingController bc = new BaggingController(cs);
 		Item aItem = new Item(60) {};
-		bControlSoftware.place(aItem);
-		try {
-			assertTrue(a.baggingArea.getCurrentWeight() == 60);
-		}
-		catch (Exception e) {
-			throw new Exception("weight not correct");
-		}
+		a.baggingArea.register(bc);
+		a.baggingArea.add(aItem);
+		assertEquals(cs.getBaggingAreaWeight(), 60, 0.01);
 	}
 	
 	@Test
-	public void testadd3() throws Exception {
-		SelfCheckoutStation a = new SelfCheckoutStation(null, null, null, testsens, testlimit);
-		BaggingControlSoftware bControlSoftware = BaggingControlSoftware(a);
+	public void testAdd3()  {
+		ControlSoftware cs = new ControlSoftware();
+		SelfCheckoutStation a = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, testlimit, testsens);
+		BaggingController bc = new BaggingController(cs);
 		Item aItem = new Item(60) {};
 		Item bItem = new Item(90) {};
 		Item cItem = new Item(120) {};
-		bControlSoftware.place(aItem);
-		bControlSoftware.place(bItem);
-		bControlSoftware.place(cItem);
-		try {
-			assertTrue(a.baggingArea.getCurrentWeight() == 270);
-		}
-		catch (Exception e) {
-			throw new Exception("weight not correct");
-		}
-		 
+		a.baggingArea.register(bc);
+		a.baggingArea.add(aItem);
+		a.baggingArea.add(bItem);
+		a.baggingArea.add(cItem);
+		assertEquals(cs.getBaggingAreaWeight(), 270, 0.01);
 	}
 	
 	@Test
-	public void testoverload() throws Exception {
-		SelfCheckoutStation a = new SelfCheckoutStation(null, null, null, testsens, testlimit);
-		BaggingControlSoftware bControlSoftware = BaggingControlSoftware(a);
-		
-		Item aItem = new Item(testlimit+1) {};
+	public void testOverload() throws Exception {
+		System.setOut(new PrintStream(outContent));
 		try {
-			assertEquals(a.baggingArea.getCurrentWeight(),0);
-		} catch (Exception e) {
-			throw new Exception("limit should be exceeded");
+			ControlSoftware cs = new ControlSoftware();
+			SelfCheckoutStation a = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, testlimit, testsens);
+			BaggingController bc = new BaggingController(cs);
+			Item aItem = new Item(testlimit+1) {};
+			a.baggingArea.register(bc);
+			a.baggingArea.add(aItem);
+			assertEquals("Please remove item from scale.\n", outContent.toString());
 		}
-	}
-	
-	
-	@Test
-	public void testnegative() throws Exception {
-		SelfCheckoutStation a = new SelfCheckoutStation(null, null, null, testsens, testlimit);
-		BaggingControlSoftware bControlSoftware = BaggingControlSoftware(a);
-		
-		Item aItem = new Item(-90) {};
-		try {
-			assertEquals(a.baggingArea.getCurrentWeight(),0);
-		} catch (Exception e) {
-			throw new Exception("weight cannot be 0");
+		finally {
+			System.setOut(originalOut);
 		}
-	}
-
-
-	private BaggingControlSoftware BaggingControlSoftware(SelfCheckoutStation a2) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }
