@@ -4,6 +4,7 @@ import org.junit.Test;
 import org.lsmr.selfcheckout.*;
 import org.lsmr.selfcheckout.devices.DisabledException;
 import org.lsmr.selfcheckout.devices.SelfCheckoutStation;
+import org.lsmr.selfcheckout.devices.SimulationException;
 import org.lsmr.selfcheckout.external.ProductDatabases;
 import org.lsmr.selfcheckout.products.BarcodedProduct;
 import java.io.ByteArrayOutputStream;
@@ -161,5 +162,26 @@ public class BanknotePaymentTest {
                 System.setOut(originalOut);
             }
         }
+    }
+
+    @Test
+    public void testRemoveDanglingNote() {
+        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+        System.setOut(new PrintStream(outContent));
+        BanknoteSlotController slotController = new BanknoteSlotController();
+        SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+        station.banknoteInput.register(slotController);
+        Banknote note = new Banknote(5, currency);
+        try {
+            station.banknoteInput.emit(note);
+        }
+        catch (DisabledException | SimulationException e) {
+            throw new AssertionError(e.toString());
+        }
+        assertEquals("A banknote was ejected.\r\n", outContent.toString());
+
+        station.banknoteInput.removeDanglingBanknote();
+        assertEquals("A banknote was removed.", outContent.toString().split("\\r?\\n")[1]);
     }
 }
