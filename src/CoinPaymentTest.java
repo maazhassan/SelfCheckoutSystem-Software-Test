@@ -56,7 +56,8 @@ public class CoinPaymentTest {
             }
             try {
                 assertEquals(cs.getTotal(), new BigDecimal("98.10"));
-                assertEquals(station.coinStorage.getCoinCount(), 1);
+                assertEquals(station.coinDispensers.get(new BigDecimal("2.00")).size(), 1);
+                assertEquals(station.coinDispensers.get(new BigDecimal("1.00")).size(), 0);
             }
             catch (AssertionError ae) {
                 failCounter++;
