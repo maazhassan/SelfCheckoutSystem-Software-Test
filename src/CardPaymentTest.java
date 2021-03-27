@@ -8,6 +8,7 @@ import org.lsmr.selfcheckout.external.CardIssuer;
 import org.lsmr.selfcheckout.external.ProductDatabases;
 import org.lsmr.selfcheckout.products.BarcodedProduct;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Calendar;
@@ -34,7 +35,7 @@ public class CardPaymentTest {
     }
 
     @Test
-    public void testDebitTap() {
+    public void testCardTap() {
         int failCounter = 0;
         for (int i = 0; i < 20; i++) {
             ControlSoftware cs = new ControlSoftware();
@@ -46,13 +47,13 @@ public class CardPaymentTest {
 
             CardIssuer issuer = new CardIssuer("TestIssuer");
             cs.registerCardIssuer(issuer);
-            Card debitCard = new Card("Debit", "12345", "TestHolder", "123", "1234", true, true);
+            Card card = new Card("Debit/Credit", "12345", "TestHolder", "123", "1234", true, true);
             Calendar expiry = Calendar.getInstance();
             expiry.set(Calendar.YEAR, 2023);
             issuer.addCardData("12345", "TestHolder", expiry, "123", new BigDecimal("1000"));
 
             try {
-                station.cardReader.tap(debitCard);
+                station.cardReader.tap(card);
             }
             catch (IOException e) {
                 System.out.println("There was an error! Please try again.");
@@ -66,5 +67,195 @@ public class CardPaymentTest {
                 if (failCounter > 10) throw new AssertionError(ae.toString());
             }
         }
+    }
+
+    @Test
+    public void testCardSwipe() {
+        int failCounter = 0;
+        for (int i = 0; i < 20; i++) {
+            ControlSoftware cs = new ControlSoftware();
+            CardReaderController readerController = new CardReaderController(cs);
+            SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+            station.cardReader.register(readerController);
+            Barcode barcode = new Barcode("123456789");
+            cs.increaseTotal(barcode);
+
+            CardIssuer issuer = new CardIssuer("TestIssuer");
+            cs.registerCardIssuer(issuer);
+            Card card = new Card("Debit/Credit", "12345", "TestHolder", "123", "1234", true, true);
+            Calendar expiry = Calendar.getInstance();
+            expiry.set(Calendar.YEAR, 2023);
+            issuer.addCardData("12345", "TestHolder", expiry, "123", new BigDecimal("1000"));
+
+            try {
+                station.cardReader.swipe(card, new BufferedImage(100, 100 , BufferedImage.TYPE_3BYTE_BGR));
+            }
+            catch (IOException e) {
+                System.out.println("There was an error! Please try again.");
+            }
+
+            try {
+                assertEquals(0, cs.getTotal().compareTo(BigDecimal.ZERO));
+            }
+            catch (AssertionError ae) {
+                failCounter++;
+                if (failCounter > 10) throw new AssertionError(ae.toString());
+            }
+        }
+    }
+
+    @Test
+    public void testCardInsert() {
+        int failCounter = 0;
+        for (int i = 0; i < 20; i++) {
+            ControlSoftware cs = new ControlSoftware();
+            CardReaderController readerController = new CardReaderController(cs);
+            SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+            station.cardReader.register(readerController);
+            Barcode barcode = new Barcode("123456789");
+            cs.increaseTotal(barcode);
+
+            CardIssuer issuer = new CardIssuer("TestIssuer");
+            cs.registerCardIssuer(issuer);
+            Card card = new Card("Debit/Credit", "12345", "TestHolder", "123", "1234", true, true);
+            Calendar expiry = Calendar.getInstance();
+            expiry.set(Calendar.YEAR, 2023);
+            issuer.addCardData("12345", "TestHolder", expiry, "123", new BigDecimal("1000"));
+
+            try {
+                station.cardReader.insert(card, "1234");
+            }
+            catch (IOException e) {
+                System.out.println("There was an error! Please try again.");
+            }
+
+            try {
+                assertEquals(0, cs.getTotal().compareTo(BigDecimal.ZERO));
+            }
+            catch (AssertionError ae) {
+                failCounter++;
+                if (failCounter > 10) throw new AssertionError(ae.toString());
+            }
+        }
+    }
+
+    @Test(expected = IOException.class)
+    public void testCardInsertWithNoChip() throws IOException {
+        ControlSoftware cs = new ControlSoftware();
+        CardReaderController readerController = new CardReaderController(cs);
+        SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+        station.cardReader.register(readerController);
+        Barcode barcode = new Barcode("123456789");
+        cs.increaseTotal(barcode);
+
+        CardIssuer issuer = new CardIssuer("TestIssuer");
+        cs.registerCardIssuer(issuer);
+        Card card = new Card("Debit/Credit", "12345", "TestHolder", "123", "1234", true, false);
+        Calendar expiry = Calendar.getInstance();
+        expiry.set(Calendar.YEAR, 2023);
+        issuer.addCardData("12345", "TestHolder", expiry, "123", new BigDecimal("1000"));
+
+        station.cardReader.insert(card, "1234");
+    }
+
+    @Test(expected = IOException.class)
+    public void testCardInsertWithWrongPin() throws IOException {
+        ControlSoftware cs = new ControlSoftware();
+        CardReaderController readerController = new CardReaderController(cs);
+        SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+        station.cardReader.register(readerController);
+        Barcode barcode = new Barcode("123456789");
+        cs.increaseTotal(barcode);
+
+        CardIssuer issuer = new CardIssuer("TestIssuer");
+        cs.registerCardIssuer(issuer);
+        Card card = new Card("Debit/Credit", "12345", "TestHolder", "123", "1234", true, true);
+        Calendar expiry = Calendar.getInstance();
+        expiry.set(Calendar.YEAR, 2023);
+        issuer.addCardData("12345", "TestHolder", expiry, "123", new BigDecimal("1000"));
+
+        station.cardReader.insert(card, "1111");
+    }
+
+    @Test
+    public void testCardTapWhenTapIsNotEnabled() {
+        ControlSoftware cs = new ControlSoftware();
+        CardReaderController readerController = new CardReaderController(cs);
+        SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+        station.cardReader.register(readerController);
+        Barcode barcode = new Barcode("123456789");
+        cs.increaseTotal(barcode);
+
+        CardIssuer issuer = new CardIssuer("TestIssuer");
+        cs.registerCardIssuer(issuer);
+        Card card = new Card("Debit/Credit", "12345", "TestHolder", "123", "1234", false, true);
+        Calendar expiry = Calendar.getInstance();
+        expiry.set(Calendar.YEAR, 2023);
+        issuer.addCardData("12345", "TestHolder", expiry, "123", new BigDecimal("1000"));
+
+        try {
+            station.cardReader.tap(card);
+        }
+        catch (IOException e) {
+            System.out.println("There was an error! Please try again.");
+        }
+
+        assertEquals(0, cs.getTotal().compareTo(new BigDecimal("100.10")));
+    }
+
+    @Test
+    public void testCardRegisteredWithUnrecognizedIssuer() {
+        ControlSoftware cs = new ControlSoftware();
+        CardReaderController readerController = new CardReaderController(cs);
+        SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+        station.cardReader.register(readerController);
+        Barcode barcode = new Barcode("123456789");
+        cs.increaseTotal(barcode);
+
+        CardIssuer issuer = new CardIssuer("TestIssuer");
+        Card card = new Card("Debit/Credit", "12345", "TestHolder", "123", "1234", true, true);
+        Calendar expiry = Calendar.getInstance();
+        expiry.set(Calendar.YEAR, 2023);
+        issuer.addCardData("12345", "TestHolder", expiry, "123", new BigDecimal("1000"));
+
+        try {
+            station.cardReader.tap(card);
+            station.cardReader.insert(card, "1234");
+            station.cardReader.swipe(card, new BufferedImage(100, 100 , BufferedImage.TYPE_3BYTE_BGR));
+        }
+        catch (IOException e) {
+            System.out.println("There was an error! Please try again.");
+        }
+
+        assertEquals(0, cs.getTotal().compareTo(new BigDecimal("100.10")));
+    }
+
+    @Test
+    public void testCardBlockedByIssuer() {
+        ControlSoftware cs = new ControlSoftware();
+        CardReaderController readerController = new CardReaderController(cs);
+        SelfCheckoutStation station = new SelfCheckoutStation(currency, banknoteDenominations, coinDenominations, 100, 1);
+        station.cardReader.register(readerController);
+        Barcode barcode = new Barcode("123456789");
+        cs.increaseTotal(barcode);
+
+        CardIssuer issuer = new CardIssuer("TestIssuer");
+        cs.registerCardIssuer(issuer);
+        Card card = new Card("Debit/Credit", "12345", "TestHolder", "123", "1234", true, true);
+        Calendar expiry = Calendar.getInstance();
+        expiry.set(Calendar.YEAR, 2023);
+        issuer.addCardData("12345", "TestHolder", expiry, "123", new BigDecimal("1000"));
+        issuer.block("12345");
+
+        try {
+            station.cardReader.tap(card);
+            station.cardReader.insert(card, "1234");
+            station.cardReader.swipe(card, new BufferedImage(100, 100 , BufferedImage.TYPE_3BYTE_BGR));
+        }
+        catch (IOException e) {
+            System.out.println("There was an error! Please try again.");
+        }
+
+        assertEquals(0, cs.getTotal().compareTo(new BigDecimal("100.10")));
     }
 }
