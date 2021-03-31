@@ -96,4 +96,14 @@ public class BaggingControllerTest {
 			System.setOut(originalOut);
 		}
 	}
+	
+	@Test
+	public void testaddbag() {
+		ControlSoftware cs = new ControlSoftware();
+		Item aItem = new Item(60) {};
+		cs.addItem(aItem);
+		cs.addOwnBag(1);
+		assertEquals(cs.getBaggingAreaWeight(), 61, 0.01);
+		
+	}
 }
