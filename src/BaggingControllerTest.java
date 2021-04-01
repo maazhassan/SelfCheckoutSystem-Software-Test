@@ -81,7 +81,7 @@ public class BaggingControllerTest {
 	}
 	
 	@Test
-	public void testOverload() throws Exception {
+	public void testOverload()  {
 		System.setOut(new PrintStream(outContent));
 		try {
 			ControlSoftware cs = new ControlSoftware();
@@ -98,7 +98,7 @@ public class BaggingControllerTest {
 	}
 	
 	@Test
-	public void testaddbag() {
+	public void testAddBag() {
 		ControlSoftware cs = new ControlSoftware();
 		Item aItem = new Item(60) {};
 		cs.addItem(aItem);
